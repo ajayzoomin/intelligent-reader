@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Custom Properties for Dynamic Theming */
+:root {
+  --theme-bg: #faf7f0;
+  --theme-surface: #f5f0e8;
+  --theme-text: #2c2416;
+  --theme-text-muted: #6b5d47;
+  --theme-accent: #8b4513;
+  --theme-accent-text: #fff8f0;
+  --theme-border: #d4b896;
+  --theme-font-heading: "Playfair Display", Georgia, serif;
+  --theme-font-body: Georgia, "Times New Roman", serif;
+}
+
+/* Masterpiece Theme Application */
+.masterpiece-root {
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: var(--theme-font-body);
+}
+
+.masterpiece-heading {
+  font-family: var(--theme-font-heading);
+  color: var(--theme-text);
+}
+
+.masterpiece-accent {
+  color: var(--theme-accent);
+}
+
+.masterpiece-muted {
+  color: var(--theme-text-muted);
+}
+
+.masterpiece-surface {
+  background-color: var(--theme-surface);
+}
+
+.masterpiece-border {
+  border-color: var(--theme-border);
+}
+
+/* Drop Cap Styles */
+.drop-cap-classic::first-letter {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 5rem;
+  font-weight: 900;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.1em;
+  margin-top: 0.05em;
+  color: var(--theme-accent);
+}
+
+.drop-cap-avant::first-letter {
+  font-family: "Space Mono", monospace;
+  font-size: 5rem;
+  font-weight: 700;
+  float: left;
+  line-height: 0.85;
+  margin-right: 0.1em;
+  color: #00ff41;
+  text-shadow: 0 0 20px #00ff41;
+}
+
+.drop-cap-minimal::first-letter {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 4.5rem;
+  font-weight: 300;
+  float: left;
+  line-height: 0.85;
+  margin-right: 0.15em;
+  color: #374151;
+}
+
+/* Brutalist Skew Effect */
+.skew-card {
+  transform: skewX(-2deg);
+}
+.skew-card-inner {
+  transform: skewX(2deg);
+}
+
+/* KaTeX Math Rendering */
+.math-inline {
+  font-style: normal;
+}
+
+/* Prose Overrides for Markdown */
+.masterpiece-prose p {
+  margin-bottom: 1.25rem;
+  line-height: 1.85;
+}
+.masterpiece-prose h1,
+.masterpiece-prose h2,
+.masterpiece-prose h3 {
+  font-family: var(--theme-font-heading);
+  color: var(--theme-text);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.masterpiece-prose strong {
+  color: var(--theme-accent);
+}
+.masterpiece-prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+}
+.masterpiece-prose th {
+  background-color: var(--theme-accent);
+  color: var(--theme-accent-text);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.masterpiece-prose td {
+  border: 1px solid var(--theme-border);
+  padding: 0.5rem 0.75rem;
+}
+.masterpiece-prose tr:nth-child(even) td {
+  background-color: var(--theme-surface);
+}
+.masterpiece-prose blockquote {
+  border-left: 4px solid var(--theme-accent);
+  padding-left: 1rem;
+  color: var(--theme-text-muted);
+  font-style: italic;
+  margin: 1.5rem 0;
+}
+
+/* Gym scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+/* Chat panel scrollbar */
+.chat-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Avant-Garde scan lines effect */
+.scanlines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
