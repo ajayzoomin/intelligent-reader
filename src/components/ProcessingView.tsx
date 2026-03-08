@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen } from 'lucide-react';
 import { LOADING_PHRASES } from '../constants';
+import ReforgeLogoIcon from './ReforgeLogoIcon';
 
 interface ProcessingViewProps {
   currentMessage: string;
@@ -62,7 +62,7 @@ export default function ProcessingView({ currentMessage }: ProcessingViewProps) 
             transition={{ duration: 2, repeat: Infinity }}
             className="absolute inset-4 rounded-full bg-gradient-to-br from-indigo-600/20 to-purple-600/20 flex items-center justify-center"
           >
-            <BookOpen className="w-8 h-8 text-indigo-400" />
+            <ReforgeLogoIcon size={36} />
           </motion.div>
         </div>
 

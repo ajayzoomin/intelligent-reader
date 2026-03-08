@@ -5,11 +5,12 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { MessageSquare, Dumbbell, RefreshCw, BookOpen, Minimize2 } from 'lucide-react';
+import { MessageSquare, Dumbbell, RefreshCw, BookOpen, Minimize2, Home } from 'lucide-react';
 import type { MasterpieceContent, Vibe } from '../types';
 import { vc } from '../utils/themes';
 import ColorControlBar from './ColorControlBar';
 import type { ThemeColorKey } from './ColorControlBar';
+import ReforgeLogoIcon from './ReforgeLogoIcon';
 
 interface MasterpieceViewProps {
   content: MasterpieceContent;
@@ -497,9 +498,26 @@ export default function MasterpieceView({
           data-color-key="--theme-surface"
         >
           <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-            <span className={`text-xs ${bylineStyle}`} data-color-key="--theme-text-muted">
-              {vibe === 'AVANT_GARDE' ? '>> ' : ''}The Intelligent Reader
-            </span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onReExtract}
+                title="Back to home — start a new document"
+                className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-all ${vc(vibe, {
+                  CLASSIC: 'text-[var(--theme-text-muted)] hover:text-[var(--theme-accent)] hover:bg-[var(--theme-accent)]/10',
+                  AVANT_GARDE: 'text-[var(--theme-accent)]/60 hover:text-[var(--theme-accent)] hover:bg-[var(--theme-accent)]/10 font-space-mono',
+                  MINIMALIST: 'text-gray-400 hover:text-gray-700 hover:bg-gray-100',
+                })}`}
+              >
+                <Home className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Home</span>
+              </button>
+              <div className="flex items-center gap-1.5" data-color-key="--theme-text-muted">
+                <ReforgeLogoIcon size={16} className="opacity-70" />
+                <span className={`text-xs font-semibold tracking-tight ${bylineStyle}`}>
+                  {vibe === 'AVANT_GARDE' ? 'REFORGE' : 'Reforge'}
+                </span>
+              </div>
+            </div>
             <span className={`text-xs ${bylineStyle}`} data-color-key="--theme-text-muted">
               🎭 {persona.length > 35 ? persona.slice(0, 32) + '…' : persona}
             </span>

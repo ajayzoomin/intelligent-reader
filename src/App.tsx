@@ -25,6 +25,7 @@ import ProcessingView from './components/ProcessingView';
 import MasterpieceView from './components/MasterpieceView';
 import GymView from './components/GymView';
 import ChatPanel from './components/ChatPanel';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Detect errors that mean the API key is invalid or quota is exhausted
 function isApiKeyError(message: string): boolean {
@@ -56,6 +57,11 @@ export default function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [pageImages, setPageImages] = useState<string[]>([]);
   const [colorOverrides, setColorOverrides] = useState<Record<string, string>>({});
+
+  // Stores the last submitted intake form options so the user can go back
+  // and tweak settings without re-entering everything from scratch.
+  // Holds the *raw* persona (what the user typed, possibly empty string).
+  const [lastIntakeOptions, setLastIntakeOptions] = useState<IntakeOptions | null>(null);
 
   // True when the saved key has been rejected (expired / quota / wrong key)
   const [apiKeyInvalid, setApiKeyInvalid] = useState(false);
@@ -101,6 +107,16 @@ export default function App() {
   }, []);
 
   const handleProcess = useCallback(async (options: IntakeOptions) => {
+    // Persist the raw options (persona is what the user typed, possibly empty)
+    // so IntakeEngine can pre-populate the form if they come back to edit.
+    setLastIntakeOptions(options);
+
+    // Apply persona default here — IntakeEngine sends the raw typed value.
+    const effectivePersona =
+      options.persona.trim() ||
+      'A thoughtful intellectual who distills ideas with depth, clarity, and genuine curiosity';
+    const processOptions = { ...options, persona: effectivePersona };
+
     setPhase('processing');
     setError(null);
     setApiKeyInvalid(false);
@@ -117,49 +133,66 @@ export default function App() {
     try {
       let text = '';
       let images: string[] = [];
+      let pageTexts: string[] = [];
 
-      if (options.inputType === 'pdf' && options.file) {
+      if (processOptions.inputType === 'pdf' && processOptions.file) {
         setLoadingMessage('Extracting text from PDF...');
 
         let pdfStart: number | undefined;
         let pdfEnd: number | undefined;
 
-        if (options.scopeType === 'pages') {
+        if (processOptions.scopeType === 'pages') {
           // Direct page range — no AI needed, use the numbers as-is
-          pdfStart = options.pageRangeStart;
-          pdfEnd = options.pageRangeEnd;
+          pdfStart = processOptions.pageRangeStart;
+          pdfEnd = processOptions.pageRangeEnd;
           setLoadingMessage(`Extracting pages ${pdfStart}–${pdfEnd}...`);
-          const result = await extractTextFromPdf(options.file, pdfStart, pdfEnd);
+          const result = await extractTextFromPdf(processOptions.file, pdfStart, pdfEnd);
           text = result.text;
-        } else if (options.scopeType === 'chapter' && options.chapterName.trim()) {
+          pageTexts = result.pageTexts;
+        } else if (processOptions.scopeType === 'chapter' && processOptions.chapterName.trim()) {
           setLoadingMessage('Mapping chapter boundaries with AI...');
           try {
-            const tocText = await extractTocPages(options.file, 15);
-            const boundaries = await findChapterBoundaries(tocText, options.chapterName);
+            const tocText = await extractTocPages(processOptions.file, 15);
+            const boundaries = await findChapterBoundaries(tocText, processOptions.chapterName);
             pdfStart = boundaries.startPage;
             pdfEnd = boundaries.endPage;
             setLoadingMessage(`Extracting pages ${boundaries.startPage}–${boundaries.endPage}...`);
-            const result = await extractTextFromPdf(options.file, pdfStart, pdfEnd);
+            const result = await extractTextFromPdf(processOptions.file, pdfStart, pdfEnd);
             text = result.text;
+            pageTexts = result.pageTexts;
           } catch {
             setLoadingMessage('Chapter mapping failed — extracting full document...');
-            const result = await extractTextFromPdf(options.file);
+            const result = await extractTextFromPdf(processOptions.file);
             text = result.text;
+            pageTexts = result.pageTexts;
           }
         } else {
-          const result = await extractTextFromPdf(options.file);
+          const result = await extractTextFromPdf(processOptions.file);
           text = result.text;
+          pageTexts = result.pageTexts;
         }
 
-        // Render page images for AI multimodal analysis (diagrams, charts, tables)
-        setLoadingMessage('Rendering page images for diagram extraction...');
-        try {
-          images = await extractPageImages(options.file, pdfStart, pdfEnd, 15);
-        } catch {
-          // Images are optional — AI still works without them
+        // Only attempt multimodal figure extraction for visually sparse documents
+        // (slide decks, figure-heavy PDFs, diagrams). Text-heavy documents like books,
+        // articles, and essays have no meaningful figures — rendering their pages as
+        // screenshots causes the AI to false-positive on text-only pages.
+        //
+        // Heuristic: avg > 500 chars/page = text document → skip page images entirely.
+        // Slide decks: ~150-300 chars/slide → visual doc → multimodal enabled.
+        // Books/articles: ~1,500-3,500 chars/page → text doc → multimodal disabled.
+        const avgCharsPerPage = pageTexts.length > 0 ? text.length / pageTexts.length : 0;
+        const isVisualDocument = avgCharsPerPage < 500;
+
+        if (isVisualDocument) {
+          setLoadingMessage('Scanning for diagrams and figures...');
+          try {
+            images = await extractPageImages(processOptions.file, pdfStart, pdfEnd, 15);
+          } catch {
+            // Images are optional — AI still works without them
+          }
         }
       } else {
-        text = options.rawText;
+        text = processOptions.rawText;
       }
 
       setPageImages(images);
@@ -171,12 +204,12 @@ export default function App() {
       }
 
       setSourceText(text);
-      setVibe(options.vibe);
-      setPersona(options.persona);
-      applyTheme(options.vibe);
+      setVibe(processOptions.vibe);
+      setPersona(processOptions.persona);
+      applyTheme(processOptions.vibe);
 
       setLoadingMessage('Consulting the AI...');
-      const masterpiece = await generateMasterpiece(text, options.persona, options.vibe, images, options.targetWordCount);
+      const masterpiece = await generateMasterpiece(text, processOptions.persona, processOptions.vibe, images, processOptions.targetWordCount);
 
       if (!masterpiece.title || !Array.isArray(masterpiece.sections) || masterpiece.sections.length === 0) {
         throw new Error('The AI returned an incomplete response. Please try again.');
@@ -187,8 +220,8 @@ export default function App() {
       const historyItem: HistoryItem = {
         id: Date.now().toString(),
         title: masterpiece.title,
-        vibe: options.vibe,
-        persona: options.persona,
+        vibe: processOptions.vibe,
+        persona: processOptions.persona,
         timestamp: Date.now(),
         content: masterpiece,
         sourceText: text,
@@ -253,6 +286,7 @@ export default function App() {
   };
 
   return (
+    <ErrorBoundary onReset={handleReturnToIntake}>
     <div className="relative">
       <AnimatePresence mode="wait">
         {phase === 'intake' && (
@@ -267,6 +301,7 @@ export default function App() {
               apiKeyMissing={apiKeyMissing}
               apiKeyInvalid={apiKeyInvalid}
               onApiKeyRestored={() => setApiKeyInvalid(false)}
+              initialOptions={lastIntakeOptions ?? undefined}
             />
           </motion.div>
         )}
@@ -311,10 +346,12 @@ export default function App() {
               persona={persona}
               vibe={vibe}
               onBack={() => setPhase('masterpiece')}
+              onGoHome={handleReturnToIntake}
             />
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+    </ErrorBoundary>
   );
 }

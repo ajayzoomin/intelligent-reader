@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, ChevronRight, Clock, Trash2, AlertCircle, BookOpen, Zap } from 'lucide-react';
+import { Upload, FileText, ChevronRight, Clock, Trash2, AlertCircle, Zap } from 'lucide-react';
+import ReforgeLogoIcon from './ReforgeLogoIcon';
 import type { Vibe, ScopeType, InputType, HistoryItem, IntakeOptions } from '../types';
 import { VIBE_DATA } from '../constants';
 import { clearHistory } from '../utils/storage';
@@ -18,6 +19,12 @@ interface IntakeEngineProps {
   apiKeyInvalid?: boolean;
   /** Called once the user has saved a new valid-looking key */
   onApiKeyRestored?: () => void;
+  /**
+   * When set, the form hydrates from these values so the user can review
+   * and tweak a previous submission without re-entering everything.
+   * persona is the raw typed value (possibly empty string).
+   */
+  initialOptions?: IntakeOptions;
 }
 
 export default function IntakeEngine({
@@ -30,6 +37,7 @@ export default function IntakeEngine({
   apiKeyMissing,
   apiKeyInvalid = false,
   onApiKeyRestored,
+  initialOptions,
 }: IntakeEngineProps) {
   const [inputType, setInputType] = useState<InputType>('text');
   const [rawText, setRawText] = useState('');
@@ -42,6 +50,8 @@ export default function IntakeEngine({
   const [persona, setPersona] = useState<string>('');
   const [dragOver, setDragOver] = useState(false);
   const [targetWordCount, setTargetWordCount] = useState(800);
+  // True when the form was hydrated from a previous submission
+  const [isEditing, setIsEditing] = useState(false);
 
   // Seed from localStorage so the user never has to re-enter the key after a reload
   const [apiKey, setApiKey] = useState<string>(
@@ -60,6 +70,22 @@ export default function IntakeEngine({
       setShowApiKeyInput(true);
     }
   }, [apiKeyInvalid]);
+
+  // Hydrate form from a previous submission when the user navigates back
+  useEffect(() => {
+    if (!initialOptions) return;
+    setInputType(initialOptions.inputType);
+    setRawText(initialOptions.rawText);
+    setFile(initialOptions.file);
+    setScopeType(initialOptions.scopeType);
+    setChapterName(initialOptions.chapterName);
+    setPageRangeStart(initialOptions.pageRangeStart);
+    setPageRangeEnd(initialOptions.pageRangeEnd);
+    setVibe(initialOptions.vibe);
+    setPersona(initialOptions.persona);   // raw value — possibly empty string
+    setTargetWordCount(initialOptions.targetWordCount);
+    setIsEditing(true);
+  }, [initialOptions]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -95,8 +121,8 @@ export default function IntakeEngine({
 
   const handleSubmit = () => {
     saveApiKey(apiKey);
-    const effectivePersona = persona.trim() || 'A thoughtful intellectual who distills ideas with depth, clarity, and genuine curiosity';
-    onSubmit({ inputType, rawText, file, scopeType, chapterName, pageRangeStart, pageRangeEnd, vibe, persona: effectivePersona, targetWordCount });
+    // Send raw persona — App.tsx applies the default if empty.
+    onSubmit({ inputType, rawText, file, scopeType, chapterName, pageRangeStart, pageRangeEnd, vibe, persona: persona.trim(), targetWordCount });
   };
 
   const canSubmit = (inputType === 'text' && rawText.trim().length > 50) ||
@@ -119,10 +145,10 @@ export default function IntakeEngine({
       {/* Header */}
       <div className="border-b border-gray-800 bg-gray-950/80 backdrop-blur sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BookOpen className="w-6 h-6 text-indigo-400" />
-            <span className="font-inter font-semibold text-sm tracking-widest uppercase text-gray-300">
-              The Intelligent Reader & Gym
+          <div className="flex items-center gap-2.5">
+            <ReforgeLogoIcon size={26} />
+            <span className="font-inter font-bold text-base tracking-tight text-white">
+              Reforge
             </span>
           </div>
           {!showApiKeyInput && apiKeyMissing && (
@@ -137,6 +163,45 @@ export default function IntakeEngine({
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-12">
+
+        {/* ── "Editing previous settings" ribbon ──────────────────────────── */}
+        <AnimatePresence>
+          {isEditing && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className="mb-8 flex items-center justify-between gap-4 bg-indigo-950/50 border border-indigo-700/50 rounded-xl px-5 py-3"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
+                <p className="text-indigo-300 text-sm font-inter">
+                  Reviewing your previous settings — edit anything and re-generate.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setInputType('text');
+                  setRawText('');
+                  setFile(null);
+                  setScopeType('full');
+                  setChapterName('');
+                  setPageRangeStart(1);
+                  setPageRangeEnd(50);
+                  setVibe('CLASSIC');
+                  setPersona('');
+                  setTargetWordCount(800);
+                  setIsEditing(false);
+                }}
+                className="text-xs text-indigo-400 hover:text-white border border-indigo-600/50 hover:border-indigo-400 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-inter"
+              >
+                Start fresh
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}

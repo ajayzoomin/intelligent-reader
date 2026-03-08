@@ -14,6 +14,7 @@ import {
   Loader2,
   AlertTriangle,
   Star,
+  Home,
 } from 'lucide-react';
 import type {
   Vibe,
@@ -22,6 +23,7 @@ import type {
   GradingResult,
   Question,
 } from '../types';
+// GradingResult is also used as a type annotation in handleSubmitAnswers normalisation above
 import { DIFFICULTY_DATA } from '../constants';
 import { generateGymProtocol, gradeAnswers } from '../utils/ai';
 
@@ -30,6 +32,7 @@ interface GymViewProps {
   persona: string;
   vibe: Vibe;
   onBack: () => void;
+  onGoHome: () => void;
 }
 
 type GymPhase = 'select' | 'questions' | 'grading' | 'results';
@@ -53,7 +56,7 @@ const TYPE_LABELS: Record<string, string> = {
   short_answer: 'Short answer',
 };
 
-export default function GymView({ sourceText, persona, vibe, onBack }: GymViewProps) {
+export default function GymView({ sourceText, persona, vibe, onBack, onGoHome }: GymViewProps) {
   const [gymPhase, setGymPhase] = useState<GymPhase>('select');
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [protocol, setProtocol] = useState<GymProtocol | null>(null);
@@ -114,13 +117,29 @@ export default function GymView({ sourceText, persona, vibe, onBack }: GymViewPr
     setIsLoading(true);
     setError(null);
     try {
-      const result = await gradeAnswers(
+      const raw = await gradeAnswers(
         protocol.questions,
         answers,
         sourceText,
         persona,
         difficulty!
       );
+
+      // Normalize AI-returned fields to safe primitives before they touch
+      // the renderer. Gemini occasionally returns objects/arrays where strings
+      // are expected, which causes a silent React render crash (blank page).
+      const result: GradingResult = {
+        overallAssessment: String(raw?.overallAssessment ?? 'Assessment unavailable.'),
+        questionFeedback: Array.isArray(raw?.questionFeedback)
+          ? raw.questionFeedback.map((fb) => ({
+              questionId: String(fb?.questionId ?? ''),
+              isCorrect: Boolean(fb?.isCorrect),
+              correctAnswer: String(fb?.correctAnswer ?? '—'),
+              explanation: String(fb?.explanation ?? ''),
+            }))
+          : [],
+      };
+
       setGradingResult(result);
       setGymPhase('results');
     } catch (err) {
@@ -204,6 +223,15 @@ export default function GymView({ sourceText, persona, vibe, onBack }: GymViewPr
       {/* Header */}
       <div className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur border-b border-gray-800">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+          <button
+            onClick={onGoHome}
+            title="Back to home — start a new document"
+            className="flex items-center gap-1.5 text-gray-500 hover:text-white transition-colors text-sm"
+          >
+            <Home className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Home</span>
+          </button>
+          <span className="text-gray-700">|</span>
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
